@@ -121,10 +121,10 @@
                 <n-date-picker type="datetimerange" clearable />
               </n-form-item>
               <n-form-item label="目标业主">
-                <n-select placeholder="请选择目标业主" clearable />
+                <n-select filterable placeholder="请选择目标业主" clearable />
               </n-form-item>
               <n-form-item label="事由类型">
-                <n-select placeholder="请选择事由类型" clearable />
+                <n-select filterable placeholder="请选择事由类型" clearable />
               </n-form-item>
               <n-form-item label="拜访事由">
                 <n-input placeholder="请输入拜访事由" type="textarea"/>
@@ -302,7 +302,10 @@ const rouRegSubmit = () => {
 
 }
 
-console.log(touRegGender);
+// 加载目标业主
+axios({
+  method: 'get'
+})
 
 // #endregion
 
