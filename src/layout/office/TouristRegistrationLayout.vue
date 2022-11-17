@@ -101,33 +101,33 @@
       <n-modal :auto-focus="false" v-model:show="showTouRegModal" class="custom-card" preset="card" style="width: 600px"
         title="访客登记" transform-origin="center" size="huge" :bordered="false"
         :segmented="{ content: 'soft', footer: 'soft' }">
-        <!-- :model="touRegValue" :rules="touRegRules" -->
-        <n-form ref="touRegFormRef" label-placement="left" :label-width="75" size="medium">
+        <n-form ref="touRegFormRef" label-placement="left" :label-width="80" size="medium" :model="touRegValue"
+          :rules="touRegRules">
           <n-grid cols="1">
             <n-grid-item>
-              <n-form-item label="访客姓名">
-                <n-input placeholder="请输入访客姓名" />
+              <n-form-item label="访客姓名" path="name">
+                <n-input placeholder="请输入访客姓名" v-model:value="touRegValue.name"/>
               </n-form-item>
-              <n-form-item label="访客性别">
-                <n-select placeholder="请选择性别" style="width: 180px" :options="touRegGender" clearable />
+              <n-form-item label="访客性别" path="gender">
+                <n-select placeholder="请选择性别" v-model:value="touRegValue.gender" style="width: 180px" :options="touRegGender" clearable />
               </n-form-item>
-              <n-form-item label="联系方式">
-                <n-input placeholder="请输入联系方式" />
+              <n-form-item label="联系方式" path="phone">
+                <n-input placeholder="请输入联系方式" v-model:value="touRegValue.phone" />
               </n-form-item>
-              <n-form-item label="车牌号">
-                <n-input placeholder="请输入车牌号" />
+              <n-form-item label="车牌号" path="carNo">
+                <n-input placeholder="请输入车牌号" v-model:value="touRegValue.carNo" />
               </n-form-item>
-              <n-form-item label="时间">
-                <n-date-picker type="datetimerange" clearable />
+              <n-form-item label="时间" path="dataRange">
+                <n-date-picker type="datetimerange" v-model:value="touRegValue.dataRange" clearable />
               </n-form-item>
-              <n-form-item label="目标业主">
-                <n-select filterable placeholder="请选择目标业主" clearable />
+              <n-form-item label="目标业主" path="ownerNo">
+                <n-select filterable placeholder="请选择目标业主" v-model:value="touRegValue.ownerNo" :options="targetOwnerInfo" clearable />
               </n-form-item>
-              <n-form-item label="事由类型">
-                <n-select filterable placeholder="请选择事由类型" clearable />
+              <n-form-item label="事由类型" path="type">
+                <n-select filterable placeholder="请选择事由类型" v-model:value="touRegValue.type" :options="reasonInfo" clearable />
               </n-form-item>
-              <n-form-item label="拜访事由">
-                <n-input placeholder="请输入拜访事由" type="textarea"/>
+              <n-form-item label="拜访事由" path="reason">
+                <n-input placeholder="请输入拜访事由" v-model:value="touRegValue.reason" type="textarea" />
               </n-form-item>
             </n-grid-item>
           </n-grid>
@@ -175,6 +175,7 @@ import {
 import axios from 'axios'
 
 import { formatDate, mergeObject } from '../../util/BaseUtil'
+import QueryString from 'qs'
 
 const global = inject('global')
 
@@ -267,6 +268,9 @@ const touRegPageChange = (page) => {
 // #region 访客模态框
 
 const showTouRegModal = ref(false) // 显示模态框
+const touRegModalModel = ref(null) // 模态框模式
+const touRegFormRef  = ref(null) // form 表单的引用
+const submitTouRegLoading = ref(false) // 提交按钮加载
 
 // 性别数据
 const touRegGender = ['女', '男'].map((k, v) => ({
@@ -277,16 +281,77 @@ const touRegGender = ['女', '男'].map((k, v) => ({
 /**
  * 访客数据
  */
-const touRegValue = () => {
-
-}
+const touRegValue = ref({
+  name: null,
+  gender: null,
+  phone: null,
+  carNo: null,
+  dataRange: null,
+  visitingTime: computed(() => {
+    if (touRegValue.value.dataRange != null) {
+      return formatDate(new Date(touRegValue.value.dataRange[0]))
+    }
+    return null
+  }),
+  leaveTime: computed(() => {
+    if (touRegValue.value.dataRange != null) {
+      return formatDate(new Date(touRegValue.value.dataRange[1]))
+    }
+    return null
+  }),
+  ownerNo: null,
+  type: null,
+  reason: null
+})
 
 /**
  * 访客数据校验
  */
-const touRegRules = () => {
-
-}
+const touRegRules = ref({
+  name: {
+    required: true,
+    message: "请输入访客姓名",
+    trigger: "blur"
+  },
+  gender: {
+    required: true,
+    type: 'number',
+    message: '请选择性别',
+    trigger: 'blur'
+  },
+  phone: {
+    required: true,
+    message: '请输入联系方式',
+    trigger: 'blur'
+  },
+  carNo: {
+    required: true,
+    message: '请输入车牌号',
+    trigger: 'blur'
+  },
+  dataRange: {
+    required: true,
+    type: 'array',
+    message: '请选择时间',
+    trigger: 'blur'
+  },
+  ownerNo: {
+    required: true,
+    message: '请选择目标业主',
+    trigger: 'blur'
+  },
+  type: {
+    required: true,
+    type: 'number',
+    message: '请选择事由类型',
+    trigger: 'blur'
+  },
+  reason: {
+    required: true,
+    message: '请输入拜访事由',
+    trigger: 'blur'
+  }
+})
 
 /**
  * 打开模态框
@@ -298,13 +363,61 @@ const openTouRegModal = () => {
 /**
  * 提交按钮
  */
-const rouRegSubmit = () => {
-
+const rouRegSubmit = (e) => {
+  e.preventDefault();
+  touRegFormRef.value?.validate((errors) => {
+    if (!errors) {
+      // 校验通过
+    } else {
+      // 校验不通过
+    }
+  });
 }
 
-// 加载目标业主
+// 添加访客信息
+const addTouReg = () => {
+  axios({
+    method: 'post',
+    url: global.api + '/addAppAnnouncement',
+    data: QueryString.stringify()
+  }).then(res => {
+    
+  }).catch(err => {
+
+  }).finally(() => {
+
+  })
+}
+
+// 事由数据
+const reasonInfo = [
+  {
+    label: '喜事',
+    value: 1
+  },
+  {
+    label: '白事',
+    value: 0
+  }
+]
+// 目标业主信息
+const targetOwnerInfo = ref([])
+// 目标业主加载中
+const targetOwnerInfoLoading = ref(true)
+// 加载目标业主信息
 axios({
-  method: 'get'
+  method: 'get',
+  url: global.api + 'getAllOwnerNoPaging',
+}).then(res => {
+  for (let owner of res.data) {
+    owner.label = owner.ownerNo + " - " + owner.name
+    owner.value = owner.ownerNo
+    targetOwnerInfo.value.push(owner)
+  }
+}).catch(err => {
+  message.error('目标业主信息加载异常！' + err)
+}).finally(() => {
+  targetOwnerInfoLoading.value = false
 })
 
 // #endregion
