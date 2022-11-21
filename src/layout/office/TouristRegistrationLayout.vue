@@ -28,7 +28,7 @@
       <n-card title="公告信息" style="margin-top: 10px;padding: 0; margin-bottom: 10px;">
         <template #header-extra>
           <n-space>
-            <n-button @click="openTouRegModal" type="primary">
+            <n-button @click="openTouRegModal('add')" type="primary">
               <template #icon>
                 <n-icon>
                   <add-icon />
@@ -89,8 +89,8 @@
               '<span style=\'color:green\'>已生效</span>' : '<span style=\'color:red\'>已失效</span>'"></td>
               <td>
                 <n-button-group size="large">
-                  <n-button size="small">修改</n-button>
-                  <n-button type="error" size="small" strong secondary>删除</n-button>
+                  <n-button @click="openTouRegModal('update', item)" size="small">修改</n-button>
+                  <n-button @click="deleteTouReg(item.id)" type="error" size="small" strong secondary>删除</n-button>
                 </n-button-group>
               </td>
             </tr>
@@ -106,10 +106,11 @@
           <n-grid cols="1">
             <n-grid-item>
               <n-form-item label="访客姓名" path="name">
-                <n-input placeholder="请输入访客姓名" v-model:value="touRegValue.name"/>
+                <n-input placeholder="请输入访客姓名" v-model:value="touRegValue.name" />
               </n-form-item>
               <n-form-item label="访客性别" path="gender">
-                <n-select placeholder="请选择性别" v-model:value="touRegValue.gender" style="width: 180px" :options="touRegGender" clearable />
+                <n-select placeholder="请选择性别" v-model:value="touRegValue.gender" style="width: 180px"
+                  :options="touRegGender" clearable />
               </n-form-item>
               <n-form-item label="联系方式" path="phone">
                 <n-input placeholder="请输入联系方式" v-model:value="touRegValue.phone" />
@@ -121,10 +122,12 @@
                 <n-date-picker type="datetimerange" v-model:value="touRegValue.dataRange" clearable />
               </n-form-item>
               <n-form-item label="目标业主" path="ownerNo">
-                <n-select filterable placeholder="请选择目标业主" v-model:value="touRegValue.ownerNo" :options="targetOwnerInfo" clearable />
+                <n-select filterable placeholder="请选择目标业主" v-model:value="touRegValue.ownerNo"
+                  :options="targetOwnerInfo" clearable />
               </n-form-item>
               <n-form-item label="事由类型" path="type">
-                <n-select filterable placeholder="请选择事由类型" v-model:value="touRegValue.type" :options="reasonInfo" clearable />
+                <n-select filterable placeholder="请选择事由类型" v-model:value="touRegValue.type" :options="reasonInfo"
+                  clearable />
               </n-form-item>
               <n-form-item label="拜访事由" path="reason">
                 <n-input placeholder="请输入拜访事由" v-model:value="touRegValue.reason" type="textarea" />
@@ -135,7 +138,8 @@
         <template #footer>
           <n-space justify="end">
             <n-button @click="showTouRegModal = false">取消</n-button>
-            <n-button @click="rouRegSubmit" type="primary" attr-type="button">提交</n-button>
+            <n-button :loading="submitTouRegLoading" @click="rouRegSubmit" type="primary" attr-type="button">提交
+            </n-button>
           </n-space>
         </template>
       </n-modal>
@@ -174,7 +178,7 @@ import {
 
 import axios from 'axios'
 
-import { formatDate, mergeObject } from '../../util/BaseUtil'
+import { formatDate, mergeObject, createId } from '../../util/BaseUtil'
 import QueryString from 'qs'
 
 const global = inject('global')
@@ -269,8 +273,9 @@ const touRegPageChange = (page) => {
 
 const showTouRegModal = ref(false) // 显示模态框
 const touRegModalModel = ref(null) // 模态框模式
-const touRegFormRef  = ref(null) // form 表单的引用
+const touRegFormRef = ref(null) // form 表单的引用
 const submitTouRegLoading = ref(false) // 提交按钮加载
+let selectItem = null // 当前选中的访客信息
 
 // 性别数据
 const touRegGender = ['女', '男'].map((k, v) => ({
@@ -324,11 +329,6 @@ const touRegRules = ref({
     message: '请输入联系方式',
     trigger: 'blur'
   },
-  carNo: {
-    required: true,
-    message: '请输入车牌号',
-    trigger: 'blur'
-  },
   dataRange: {
     required: true,
     type: 'array',
@@ -356,7 +356,64 @@ const touRegRules = ref({
 /**
  * 打开模态框
  */
-const openTouRegModal = () => {
+const openTouRegModal = (model, item) => {
+  // 重置访客信息
+  touRegValue.value = {
+    name: null,
+    gender: null,
+    phone: null,
+    carNo: null,
+    dataRange: null,
+    visitingTime: computed(() => {
+      if (touRegValue.value.dataRange != null) {
+        return formatDate(new Date(touRegValue.value.dataRange[0]))
+      }
+      return null
+    }),
+    leaveTime: computed(() => {
+      if (touRegValue.value.dataRange != null) {
+        return formatDate(new Date(touRegValue.value.dataRange[1]))
+      }
+      return null
+    }),
+    ownerNo: null,
+    type: null,
+    reason: null
+  }
+
+  if (model === 'add') {
+
+  } else if (model === 'update') {
+    // 填充访客信息
+    touRegValue.value = {
+      name: item.name,
+      gender: item.gender,
+      phone: item.phone,
+      carNo: item.carNo,
+      visitingTime: computed(() => {
+        if (touRegValue.value.dataRange != null) {
+          return formatDate(new Date(touRegValue.value.dataRange[0]))
+        }
+        return null
+      }),
+      leaveTime: computed(() => {
+        if (touRegValue.value.dataRange != null) {
+          return formatDate(new Date(touRegValue.value.dataRange[1]))
+        }
+        return null
+      }),
+      dataRange: [
+        new Date(item.visitingTime).getTime(),
+        new Date(item.leaveTime).getTime()
+      ],
+      ownerNo: item.ownerNo,
+      type: item.type,
+      reason: item.reason
+    }
+    selectItem = item
+  }
+
+  touRegModalModel.value = model
   showTouRegModal.value = true
 }
 
@@ -368,26 +425,104 @@ const rouRegSubmit = (e) => {
   touRegFormRef.value?.validate((errors) => {
     if (!errors) {
       // 校验通过
+      if (touRegModalModel.value === 'add') {
+        addTouReg()
+      } else if (touRegModalModel.value === 'update') {
+        updateTouReg()
+      }
     } else {
       // 校验不通过
     }
   });
 }
 
-// 添加访客信息
+/**
+ * 添加访客信息
+ */
 const addTouReg = () => {
+  touRegValue.value.visitorsNo = createId()
+  submitTouRegLoading.value = true
   axios({
     method: 'post',
-    url: global.api + '/addAppAnnouncement',
-    data: QueryString.stringify()
+    url: global.api + '/addVisitorRecords',
+    data: QueryString.stringify(touRegValue.value)
   }).then(res => {
-    
+    if (res.data.success) {
+      message.success('访客添加成功！')
+      // 刷新列表
+      touRegPageChange(pageNo.value)
+      showTouRegModal.value = false
+    } else {
+      message.warning('访客添加失败！')
+    }
   }).catch(err => {
-
+    message.error('添加访客信息异常！' + err)
   }).finally(() => {
-
+    submitTouRegLoading.value = false
   })
 }
+
+/**
+ * 修改访客信息
+ */
+const updateTouReg = () => {
+  touRegValue.value.id = selectItem.id
+  touRegValue.value.visitorsNo = selectItem.visitorsNo
+  submitTouRegLoading.value = true
+  axios({
+    method: 'put',
+    url: global.api + '/updateVisitorRecords',
+    data: QueryString.stringify(touRegValue.value)
+  }).then(res => {
+    if (res.data.success) {
+      message.success('访客修改成功！')
+      // 刷新列表
+      touRegPageChange(pageNo.value)
+      showTouRegModal.value = false
+    } else {
+      message.warning('访客修改失败！')
+    }
+  }).catch(err => {
+    message.error('修改访客信息异常！' + err)
+  }).finally(() => {
+    submitTouRegLoading.value = false
+  })
+}
+
+/**
+ * 删除访客信息
+ */
+const deleteTouReg = (id) => {
+
+  dialog.warning({
+    title: "请确认您的操作!",
+    content: "确认是否删除这条信息!",
+    positiveText: "确认删除",
+    negativeText: "取消",
+    onPositiveClick: () => {
+      let delLoading = message.loading("正在删除")
+      axios({
+        method: 'delete',
+        url: global.api + '/deleteVisitorRecords/' + id
+      }).then(res => {
+        if (res.data.success) {
+          message.success("删除成功！")
+          // 刷新列表
+          touRegPageChange(pageNo.value)
+        } else {
+          message.warning("删除失败！")
+        }
+      }).catch(err => {
+        message.error("删除出现异常！" + err)
+      }).finally(() => {
+        delLoading.destroy();
+        delLoading = null;
+      })
+    }
+  })
+  
+}
+
 
 // 事由数据
 const reasonInfo = [
