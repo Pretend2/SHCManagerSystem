@@ -6,7 +6,7 @@
                 <n-select v-model:value="findWS.single" style="width: 180px" placeholder="请选择派单方式"
                     :options="singleOption" clearable />
                 <n-input v-model:value="findWS.type" type="text" placeholder="请输入派单类型" />
-                <n-button type="primary">
+                <n-button @click="findWSClick" type="primary">
                     <template #icon>
                         <n-icon>
                             <search-icon />
@@ -14,7 +14,7 @@
                     </template>
                     查询
                 </n-button>
-                <n-button>
+                <n-button @click="resetWS">
                     <template #icon>
                         <n-icon>
                             <arrow-clockwise-icon />
@@ -53,34 +53,34 @@
                         </tr>
                     </thead>
                     <tbody>
-                        <tr v-for="(item,index) in wSData" :key="index">
+                        <tr v-for="(item, index) in wSData" :key="index">
                             <td>
                                 <n-ellipsis style="max-width: 100px">
-                                    {{item.repairName}}
+                                    {{ item.repairName }}
                                 </n-ellipsis>
                             </td>
                             <td>
-                                {{typeOption[item.type].label}}
+                                {{ typeOption[item.type].label }}
                             </td>
                             <td>
-                                {{singleOption[item.single].label}}
+                                {{ singleOption[item.single].label }}
                             </td>
                             <td>
                                 <n-ellipsis style="max-width: 100px">
-                                    {{item.repairTypeNo}}
+                                    {{ item.repairTypeNo }}
                                 </n-ellipsis>
                             </td>
                             <td>
-                                {{item.isPublic === 0 ? '是' : '不是'}}
+                                {{ item.isPublic === 0 ? '是' : '不是' }}
                             </td>
                             <td>
                                 <n-ellipsis style="max-width: 100px">
-                                    {{item.isReturn === 0 ? '回访' : '不回访'}}
+                                    {{ item.isReturn === 0 ? '回访' : '不回访' }}
                                 </n-ellipsis>
                             </td>
                             <td>
                                 <n-ellipsis style="max-width: 100px">
-                                    {{item.masterWorker.createTime}}
+                                    {{ item.masterWorker.createTime }}
                                 </n-ellipsis>
                             </td>
                             <td>
@@ -93,8 +93,9 @@
                     </tbody>
                 </n-table>
 
-                <div style="display: flex;justify-content: center;align-items: center;margin-top: 24px;">
-                    <n-pagination :page-count="100" />
+                <div v-if="pages > 1"
+                    style="display: flex;justify-content: center;align-items: center;margin-top: 24px;">
+                    <n-pagination @update:page="wSChangePage" :page-count="pages" />
                 </div>
 
             </n-card>
@@ -212,6 +213,18 @@ const findWS = ref({
     single: null,
     type: null,
 })
+
+function findWSClick() {
+    wSChangePage(pageNo.value);
+}
+
+function resetWS() {
+    findWS.value = {
+        repairName: null,
+        single: null,
+        type: null,
+    }
+}
 // #endregion
 
 // #region 数据加载
@@ -227,6 +240,7 @@ function loadWSData(more) {
         size: global.pageSize
     }
     mergeObject(params, more)
+
     wSLoading.value = true
     axios({
         method: 'get',
@@ -243,6 +257,15 @@ function loadWSData(more) {
     })
 }
 loadWSData() // 加载数据
+
+// 页码发生变化时事件
+function wSChangePage(page) {
+    const pageData = {
+        page
+    }
+    mergeObject(pageData, findWS.value)
+    loadWSData(pageData)
+}
 // #endreguion
 
 </script>
